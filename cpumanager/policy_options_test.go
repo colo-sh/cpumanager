@@ -19,10 +19,7 @@ package cpumanager
 import (
 	"testing"
 
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/component-base/featuregate"
-	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	pkgfeatures "k8s.io/kubernetes/pkg/features"
 )
 
 type optionAvailTest struct {
@@ -54,41 +51,3 @@ func TestPolicyDefaultsAvailable(t *testing.T) {
 	}
 }
 
-func TestPolicyBetaOptionsAvailable(t *testing.T) {
-	testCases := []optionAvailTest{
-		{
-			option:            "this-option-does-not-exist",
-			featureGate:       pkgfeatures.CPUManagerPolicyBetaOptions,
-			featureGateEnable: false,
-			expectedAvailable: false,
-		},
-		{
-			option:            "this-option-does-not-exist",
-			featureGate:       pkgfeatures.CPUManagerPolicyBetaOptions,
-			featureGateEnable: true,
-			expectedAvailable: false,
-		},
-		{
-			option:            FullPCPUsOnlyOption,
-			featureGate:       pkgfeatures.CPUManagerPolicyBetaOptions,
-			featureGateEnable: true,
-			expectedAvailable: true,
-		},
-		{
-			option:            FullPCPUsOnlyOption,
-			featureGate:       pkgfeatures.CPUManagerPolicyBetaOptions,
-			featureGateEnable: false,
-			expectedAvailable: false,
-		},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.option, func(t *testing.T) {
-			defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, testCase.featureGate, testCase.featureGateEnable)()
-			err := CheckPolicyOptionAvailable(testCase.option)
-			isEnabled := (err == nil)
-			if isEnabled != testCase.expectedAvailable {
-				t.Errorf("option %q available got=%v expected=%v", testCase.option, isEnabled, testCase.expectedAvailable)
-			}
-		})
-	}
-}

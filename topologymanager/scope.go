@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"github.com/colo-sh/cpumanager/admission"
 	"github.com/colo-sh/cpumanager/containermap"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 )

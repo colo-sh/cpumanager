@@ -19,7 +19,6 @@ package topologymanager
 import (
 	"k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"github.com/colo-sh/cpumanager/admission"
 	"github.com/colo-sh/cpumanager/containermap"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 )
@@ -41,30 +40,6 @@ func NewPodScope(policy Policy) Scope {
 			podMap:           containermap.NewContainerMap(),
 		},
 	}
-}
-
-func (s *podScope) Admit(pod *v1.Pod) lifecycle.PodAdmitResult {
-	// Exception - Policy : none
-	if s.policy.Name() == PolicyNone {
-		return s.admitPolicyNone(pod)
-	}
-
-	bestHint, admit := s.calculateAffinity(pod)
-	klog.InfoS("Best TopologyHint", "bestHint", bestHint, "pod", klog.KObj(pod))
-	if !admit {
-		return admission.GetPodAdmitResult(&TopologyAffinityError{})
-	}
-
-	for _, container := range append(pod.Spec.InitContainers, pod.Spec.Containers...) {
-		klog.InfoS("Topology Affinity", "bestHint", bestHint, "pod", klog.KObj(pod), "containerName", container.Name)
-		s.setTopologyHints(string(pod.UID), container.Name, bestHint)
-
-		err := s.allocateAlignedResources(pod, &container)
-		if err != nil {
-			return admission.GetPodAdmitResult(err)
-		}
-	}
-	return admission.GetPodAdmitResult(nil)
 }
 
 func (s *podScope) accumulateProvidersHints(pod *v1.Pod) []map[string][]TopologyHint {
