@@ -21,8 +21,8 @@ import (
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	kubefeatures "k8s.io/kubernetes/pkg/features"
+	//utilfeature "k8s.io/apiserver/pkg/util/feature"
+	//kubefeatures "k8s.io/kubernetes/pkg/features"
 )
 
 const (
@@ -45,13 +45,14 @@ func CheckPolicyOptionAvailable(option string) error {
 		return fmt.Errorf("unknown CPU Manager Policy option: %q", option)
 	}
 
-	if alphaOptions.Has(option) && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUManagerPolicyAlphaOptions) {
-		return fmt.Errorf("CPU Manager Policy Alpha-level Options not enabled, but option %q provided", option)
-	}
-
-	if betaOptions.Has(option) && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUManagerPolicyBetaOptions) {
-		return fmt.Errorf("CPU Manager Policy Beta-level Options not enabled, but option %q provided", option)
-	}
+	// @todo 低版本去掉
+	//if alphaOptions.Has(option) && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUManagerPolicyAlphaOptions) {
+	//	return fmt.Errorf("CPU Manager Policy Alpha-level Options not enabled, but option %q provided", option)
+	//}
+	//
+	//if betaOptions.Has(option) && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.CPUManagerPolicyBetaOptions) {
+	//	return fmt.Errorf("CPU Manager Policy Beta-level Options not enabled, but option %q provided", option)
+	//}
 
 	return nil
 }

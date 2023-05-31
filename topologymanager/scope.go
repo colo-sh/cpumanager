@@ -19,10 +19,12 @@ package topologymanager
 import (
 	"sync"
 
+	"github.com/colo-sh/cpumanager/containermap"
 	"k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"github.com/colo-sh/cpumanager/containermap"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+
+	"k8s.io/kubernetes/pkg/kubelet/cm/admission"
 )
 
 const (
