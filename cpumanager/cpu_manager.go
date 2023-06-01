@@ -27,12 +27,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"github.com/colo-sh/cpumanager/containermap"
 	"github.com/colo-sh/cpumanager/cpumanager/state"
 	"github.com/colo-sh/cpumanager/cpumanager/topology"
 	"github.com/colo-sh/cpumanager/cpuset"
 	"github.com/colo-sh/cpumanager/topologymanager"
+	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/status"
@@ -52,9 +52,6 @@ const cpuManagerStateFileName = "cpu_manager_state"
 
 // Manager interface provides methods for Kubelet to manage pod cpus.
 type Manager interface {
-	// Start is called during Kubelet initialization.
-	Start(activePods ActivePodsFunc, sourcesReady config.SourcesReady, podStatusProvider status.PodStatusProvider, containerRuntime runtimeService, initialContainers containermap.ContainerMap) error
-
 	// Called to trigger the allocation of CPUs to a container. This must be
 	// called at some point prior to the AddContainer() call for a container,
 	// e.g. at pod admission time.
@@ -209,6 +206,15 @@ func NewManager(cpuPolicyName string, cpuPolicyOptions map[string]string, reconc
 	return manager, nil
 }
 
+func (m *manager) setState()  error {
+	stateImpl, err := state.NewCheckpointState(m.stateFileDirectory, cpuManagerStateFileName, m.policy.Name(), m.containerMap)
+	if err != nil {
+		return err
+	}
+	m.state = stateImpl
+	return nil
+}
+
 func (m *manager) Start(activePods ActivePodsFunc, sourcesReady config.SourcesReady, podStatusProvider status.PodStatusProvider, containerRuntime runtimeService, initialContainers containermap.ContainerMap) error {
 	klog.InfoS("Starting CPU manager", "policy", m.policy.Name())
 	klog.InfoS("Reconciling", "reconcilePeriod", m.reconcilePeriod)
@@ -217,13 +223,11 @@ func (m *manager) Start(activePods ActivePodsFunc, sourcesReady config.SourcesRe
 	m.podStatusProvider = podStatusProvider
 	m.containerRuntime = containerRuntime
 	m.containerMap = initialContainers
-
-	stateImpl, err := state.NewCheckpointState(m.stateFileDirectory, cpuManagerStateFileName, m.policy.Name(), m.containerMap)
+	err := m.setState()
 	if err != nil {
 		klog.ErrorS(err, "Could not initialize checkpoint manager, please drain node and remove policy state file")
 		return err
 	}
-	m.state = stateImpl
 
 	err = m.policy.Start(m.state)
 	if err != nil {
@@ -247,14 +251,20 @@ func (m *manager) Allocate(p *v1.Pod, c *v1.Container) error {
 	// being cleaned before the admission ended
 	m.setPodPendingAdmission(p)
 
+	err := m.setState()
+	if err != nil {
+		klog.ErrorS(err, "Could not initialize checkpoint manager, please drain node and remove policy state file")
+		return err
+	}
+
 	// Garbage collect any stranded resources before allocating CPUs.
-	m.removeStaleState()
+//	m.removeStaleState()
 
 	m.Lock()
 	defer m.Unlock()
 
 	// Call down into the policy to assign this container CPUs if required.
-	err := m.policy.Allocate(m.state, p, c)
+	err = m.policy.Allocate(m.state, p, c)
 	if err != nil {
 		klog.ErrorS(err, "Allocate error")
 		return err

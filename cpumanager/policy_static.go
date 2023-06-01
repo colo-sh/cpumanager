@@ -19,14 +19,14 @@ package cpumanager
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
 	"github.com/colo-sh/cpumanager/cpumanager/state"
 	"github.com/colo-sh/cpumanager/cpumanager/topology"
 	"github.com/colo-sh/cpumanager/cpuset"
 	"github.com/colo-sh/cpumanager/topologymanager"
 	"github.com/colo-sh/cpumanager/topologymanager/bitmask"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
+	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
 )
 
 const (
@@ -252,8 +252,10 @@ func (p *staticPolicy) Allocate(s state.State, pod *v1.Pod, container *v1.Contai
 	if numCPUs := p.guaranteedCPUs(pod, container); numCPUs != 0 {
 		klog.InfoS("Static policy: Allocate", "pod", klog.KObj(pod), "containerName", container.Name)
 		// container belongs in an exclusively allocated pool
+		cpuOnly := p.options.FullPhysicalCPUsOnly
+		cpuPer := ((numCPUs % p.topology.CPUsPerCore()) != 0)
 
-		if p.options.FullPhysicalCPUsOnly && ((numCPUs % p.topology.CPUsPerCore()) != 0) {
+		if cpuOnly && cpuPer {
 			// Since CPU Manager has been enabled requesting strict SMT alignment, it means a guaranteed pod can only be admitted
 			// if the CPU requested is a multiple of the number of virtual cpus per physical cores.
 			// In case CPU request is not a multiple of the number of virtual cpus per physical cores the Pod will be put
