@@ -296,6 +296,7 @@ func (p *staticPolicy) Allocate(s state.State, pod *v1.Pod, container *v1.Contai
 }
 
 func (p *staticPolicy) RemoveContainer(s state.State, podUID string, containerName string) error {
+	// 更新的时候，更新cpu_manager_state 文件
 	klog.InfoS("Static policy: RemoveContainer", "podUID", podUID, "containerName", containerName)
 	if toRelease, ok := s.GetCPUSet(podUID, containerName); ok {
 		s.Delete(podUID, containerName)
