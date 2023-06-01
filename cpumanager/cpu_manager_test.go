@@ -54,6 +54,13 @@ func (s *mockState) GetDefaultCPUSet() cpuset.CPUSet {
 	return s.defaultCPUSet.Clone()
 }
 
+func (s *mockState) GetCheckSum() state.Checksum {
+	return 0
+}
+
+func (s *mockState) SetCheckSum(checksum state.Checksum )  {
+}
+
 func (s *mockState) GetCPUSetOrDefault(podUID string, containerName string) cpuset.CPUSet {
 	if res, ok := s.GetCPUSet(podUID, containerName); ok {
 		return res
@@ -644,16 +651,6 @@ func TestCPUManagerGenerate(t *testing.T) {
 				rawMgr := mgr.(*manager)
 				if rawMgr.policy.Name() != testCase.expectedPolicy {
 					t.Errorf("Unexpected policy name. Have: %q wants %q", rawMgr.policy.Name(), testCase.expectedPolicy)
-				}
-				if rawMgr.policy.Name() == string(PolicyNone) {
-					if rawMgr.topology != nil {
-						t.Errorf("Expected topology to be nil for 'none' policy. Have: %q", rawMgr.topology)
-					}
-				}
-				if rawMgr.policy.Name() != string(PolicyNone) {
-					if rawMgr.topology == nil {
-						t.Errorf("Expected topology to be non-nil for policy '%v'. Have: %q", rawMgr.policy.Name(), rawMgr.topology)
-					}
 				}
 			}
 		})

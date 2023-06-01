@@ -17,12 +17,12 @@ limitations under the License.
 package cpumanager
 
 import (
-	"k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 	"github.com/colo-sh/cpumanager/containermap"
 	"github.com/colo-sh/cpumanager/cpumanager/state"
 	"github.com/colo-sh/cpumanager/cpuset"
 	"github.com/colo-sh/cpumanager/topologymanager"
+	"k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 )
@@ -34,12 +34,6 @@ type fakeManager struct {
 func (m *fakeManager) Start(activePods ActivePodsFunc, sourcesReady config.SourcesReady, podStatusProvider status.PodStatusProvider, containerRuntime runtimeService, initialContainers containermap.ContainerMap) error {
 	klog.InfoS("Start()")
 	return nil
-}
-
-func (m *fakeManager) Policy() Policy {
-	klog.InfoS("Policy()")
-	pol, _ := NewNonePolicy(nil)
-	return pol
 }
 
 func (m *fakeManager) Allocate(pod *v1.Pod, container *v1.Container) error {

@@ -39,6 +39,7 @@ func (as ContainerCPUAssignments) Clone() ContainerCPUAssignments {
 type Reader interface {
 	GetCPUSet(podUID string, containerName string) (cpuset.CPUSet, bool)
 	GetDefaultCPUSet() cpuset.CPUSet
+	GetCheckSum() Checksum
 	GetCPUSetOrDefault(podUID string, containerName string) cpuset.CPUSet
 	GetCPUAssignments() ContainerCPUAssignments
 }
@@ -46,6 +47,7 @@ type Reader interface {
 type writer interface {
 	SetCPUSet(podUID string, containerName string, cpuset cpuset.CPUSet)
 	SetDefaultCPUSet(cpuset cpuset.CPUSet)
+	SetCheckSum(checksum Checksum)
 	SetCPUAssignments(ContainerCPUAssignments)
 	Delete(podUID string, containerName string)
 	ClearState()

@@ -27,6 +27,7 @@ type stateMemory struct {
 	sync.RWMutex
 	assignments   ContainerCPUAssignments
 	defaultCPUSet cpuset.CPUSet
+	checksum	  Checksum
 }
 
 var _ State = &stateMemory{}
@@ -38,6 +39,10 @@ func NewMemoryState() State {
 		assignments:   ContainerCPUAssignments{},
 		defaultCPUSet: cpuset.NewCPUSet(),
 	}
+}
+
+func (s *stateMemory) GetCheckSum() Checksum {
+	return s.checksum
 }
 
 func (s *stateMemory) GetCPUSet(podUID string, containerName string) (cpuset.CPUSet, bool) {
@@ -67,6 +72,11 @@ func (s *stateMemory) GetCPUAssignments() ContainerCPUAssignments {
 	defer s.RUnlock()
 	return s.assignments.Clone()
 }
+
+func (s *stateMemory) SetCheckSum(checksum Checksum)  {
+	s.checksum = checksum
+}
+
 
 func (s *stateMemory) SetCPUSet(podUID string, containerName string, cset cpuset.CPUSet) {
 	s.Lock()

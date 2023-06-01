@@ -154,12 +154,6 @@ func NewManager(cpuPolicyName string, cpuPolicyOptions map[string]string, reconc
 
 	switch policyName(cpuPolicyName) {
 
-	case PolicyNone:
-		policy, err = NewNonePolicy(cpuPolicyOptions)
-		if err != nil {
-			return nil, fmt.Errorf("new none policy error: %w", err)
-		}
-
 	case PolicyStatic:
 		topo, err = topology.Discover(machineInfo)
 		if err != nil {
@@ -237,9 +231,9 @@ func (m *manager) Start(activePods ActivePodsFunc, sourcesReady config.SourcesRe
 
 	m.allocatableCPUs = m.policy.GetAllocatableCPUs(m.state)
 
-	if m.policy.Name() == string(PolicyNone) {
-		return nil
-	}
+	//if m.policy.Name() == string(PolicyNone) {
+	//	return nil
+	//}
 	// Periodically call m.reconcileState() to continue to keep the CPU sets of
 	// all pods in sync with and guaranteed CPUs handed out among them.
 	go wait.Until(func() { m.reconcileState() }, m.reconcilePeriod, wait.NeverStop)

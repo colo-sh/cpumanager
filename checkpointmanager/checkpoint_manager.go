@@ -29,7 +29,6 @@ import (
 type Checkpoint interface {
 	MarshalCheckpoint() ([]byte, error)
 	UnmarshalCheckpoint(blob []byte) error
-	VerifyChecksum() error
 }
 
 // CheckpointManager provides the interface to manage checkpoint

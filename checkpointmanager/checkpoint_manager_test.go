@@ -21,10 +21,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/colo-sh/cpumanager/checkpointmanager/checksum"
 	utilstore "github.com/colo-sh/cpumanager/checkpointmanager/testing"
 	"github.com/colo-sh/cpumanager/checkpointmanager/testing/example_checkpoint_formats/v1"
+	"github.com/stretchr/testify/assert"
 )
 
 var testStore *utilstore.MemStore
@@ -80,16 +80,11 @@ func newFakeCheckpointV1(name string, portMappings []*PortMapping, hostNetwork b
 }
 
 func (cp *CheckpointData) MarshalCheckpoint() ([]byte, error) {
-	cp.Checksum = checksum.New(*cp.Data)
 	return json.Marshal(*cp)
 }
 
 func (cp *CheckpointData) UnmarshalCheckpoint(blob []byte) error {
 	return json.Unmarshal(blob, cp)
-}
-
-func (cp *CheckpointData) VerifyChecksum() error {
-	return cp.Checksum.Verify(*cp.Data)
 }
 
 func (cp *CheckpointData) GetData() ([]*PortMapping, bool) {
@@ -126,7 +121,6 @@ func newFakeCheckpointRemoteV1(name string, portMappings []*v1.PortMapping, host
 }
 
 func (cp *checkpointDataV2) MarshalCheckpoint() ([]byte, error) {
-	cp.Checksum = checksum.New(*cp.Data)
 	return json.Marshal(*cp)
 }
 
@@ -134,9 +128,6 @@ func (cp *checkpointDataV2) UnmarshalCheckpoint(blob []byte) error {
 	return json.Unmarshal(blob, cp)
 }
 
-func (cp *checkpointDataV2) VerifyChecksum() error {
-	return cp.Checksum.Verify(*cp.Data)
-}
 
 func (cp *checkpointDataV2) GetData() ([]*PortMapping, bool) {
 	return cp.Data.PortMappings, cp.Data.HostNetwork

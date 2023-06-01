@@ -50,16 +50,10 @@ type CheckpointData struct {
 
 // MarshalCheckpoint tries to marshal the CheckpointData into JSON data.
 func (cp *CheckpointData) MarshalCheckpoint() ([]byte, error) {
-	cp.Checksum = checksum.New(*cp.Data)
 	return json.Marshal(*cp)
 }
 
 // UnmarshalCheckpoint tries to unmarshal the passed JSON data into CheckpointData.
 func (cp *CheckpointData) UnmarshalCheckpoint(blob []byte) error {
 	return json.Unmarshal(blob, cp)
-}
-
-// VerifyChecksum verifies that CheckpointData's checksum is same as the checksum calculated by its data.
-func (cp *CheckpointData) VerifyChecksum() error {
-	return cp.Checksum.Verify(*cp.Data)
 }

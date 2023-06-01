@@ -21,11 +21,11 @@ import (
 	"path"
 	"sync"
 
-	"k8s.io/klog/v2"
 	"github.com/colo-sh/cpumanager/checkpointmanager"
 	"github.com/colo-sh/cpumanager/checkpointmanager/errors"
 	"github.com/colo-sh/cpumanager/containermap"
 	"github.com/colo-sh/cpumanager/cpuset"
+	"k8s.io/klog/v2"
 )
 
 var _ State = &stateCheckpoint{}
@@ -129,7 +129,7 @@ func (sc *stateCheckpoint) restoreState() error {
 			tmpAssignments[pod][container] = tmpContainerCPUSet
 		}
 	}
-
+	sc.cache.SetCheckSum(checkpointV2.Checksum)
 	sc.cache.SetDefaultCPUSet(tmpDefaultCPUSet)
 	sc.cache.SetCPUAssignments(tmpAssignments)
 
@@ -144,7 +144,7 @@ func (sc *stateCheckpoint) storeState() error {
 	checkpoint := NewCPUManagerCheckpoint()
 	checkpoint.PolicyName = sc.policyName
 	checkpoint.DefaultCPUSet = sc.cache.GetDefaultCPUSet().String()
-
+	checkpoint.Checksum	= sc.cache.GetCheckSum()
 	assignments := sc.cache.GetCPUAssignments()
 	for pod := range assignments {
 		checkpoint.Entries[pod] = make(map[string]string)
@@ -170,6 +170,11 @@ func (sc *stateCheckpoint) GetCPUSet(podUID string, containerName string) (cpuse
 	return res, ok
 }
 
+// GetChecksum returns current checksum
+func (sc *stateCheckpoint) GetCheckSum() Checksum {
+	return sc.cache.GetCheckSum()
+}
+
 // GetDefaultCPUSet returns default CPU set
 func (sc *stateCheckpoint) GetDefaultCPUSet() cpuset.CPUSet {
 	sc.mux.RLock()
@@ -192,6 +197,11 @@ func (sc *stateCheckpoint) GetCPUAssignments() ContainerCPUAssignments {
 	defer sc.mux.RUnlock()
 
 	return sc.cache.GetCPUAssignments()
+}
+
+// SetCheckSum sets checksum
+func (sc *stateCheckpoint) SetCheckSum(checksum Checksum)  {
+	sc.cache.SetCheckSum(checksum)
 }
 
 // SetCPUSet sets CPU set
