@@ -1413,12 +1413,13 @@ func TestCpuSetContainers(t *testing.T) {
 			},
 		},
 	}
-
-	sDir, err := ioutil.TempDir("/tmp/", "cpu_manager_test")
-	if err != nil {
+	sDir := "/tmp/cpu_manager_test"
+	err := os.Mkdir(sDir, 0750)
+	if err != nil && !os.IsExist(err) {
 		fmt.Println(err)
 		return
 	}
+
 
 	testCases := []struct {
 		description      string
@@ -1609,10 +1610,11 @@ func TestCpuSetContainers(t *testing.T) {
 			testCase.initContainerIDs,
 			testCase.containerIDs...)
 
+		nodeAllocatableReservation := v1.ResourceList{v1.ResourceCPU: *resource.NewQuantity(3, resource.DecimalSI)}
+		mgr, err := NewManager("static", cpuPolicyOptions, 5*time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
+
 		for i := range containers {
-			nodeAllocatableReservation := v1.ResourceList{v1.ResourceCPU: *resource.NewQuantity(3, resource.DecimalSI)}
 			//	mgr, err :=  NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), cpuPolicyOptions)
-			mgr, err := NewManager("static", cpuPolicyOptions, 5*time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 
 			err = mgr.Allocate(testCase.pod, &containers[i])
 			if err != nil {

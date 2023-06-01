@@ -288,7 +288,8 @@ func (p *staticPolicy) Allocate(s state.State, pod *v1.Pod, container *v1.Contai
 		}
 		s.SetCPUSet(string(pod.UID), container.Name, cpuset)
 		p.updateCPUsToReuse(pod, container, cpuset)
-
+		// 1.接入cololet
+		// 2.缺少 taskset -pc 3-6 pid
 	}
 	// container belongs in the shared pool (nothing to do; use default cpuset)
 	return nil
