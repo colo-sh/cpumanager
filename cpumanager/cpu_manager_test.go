@@ -236,8 +236,7 @@ func TestCPUManagerAdd(t *testing.T) {
 		},
 		0,
 		cpuset.NewCPUSet(),
-		topologymanager.NewFakeManager(),
-		nil)
+		topologymanager.NewFakeManager())
 	testCases := []struct {
 		description        string
 		updateErr          error
@@ -487,7 +486,7 @@ func TestCPUManagerAddWithInitContainers(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), nil)
+		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 
 		mockState := &mockState{
 			assignments:   testCase.stAssignments,
@@ -642,7 +641,7 @@ func TestCPUManagerGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(sDir)
 
-			mgr, err := NewManager(testCase.cpuPolicyName, nil, 5*time.Second, machineInfo, cpuset.NewCPUSet(), testCase.nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
+			mgr, err := NewManager(5*time.Second, machineInfo, cpuset.NewCPUSet(), testCase.nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 			if testCase.expectedError != nil {
 				if !strings.Contains(err.Error(), testCase.expectedError.Error()) {
 					t.Errorf("Unexpected error message. Have: %s wants %s", err.Error(), testCase.expectedError.Error())
@@ -720,8 +719,7 @@ func TestReconcileState(t *testing.T) {
 		},
 		0,
 		cpuset.NewCPUSet(),
-		topologymanager.NewFakeManager(),
-		nil)
+		topologymanager.NewFakeManager())
 
 	testCases := []struct {
 		description                  string
@@ -1239,8 +1237,7 @@ func TestCPUManagerAddWithResvList(t *testing.T) {
 		},
 		1,
 		cpuset.NewCPUSet(0),
-		topologymanager.NewFakeManager(),
-		nil)
+		topologymanager.NewFakeManager())
 	testCases := []struct {
 		description        string
 		updateErr          error
@@ -1308,9 +1305,6 @@ func TestCPUManagerHandlePolicyOptions(t *testing.T) {
 		{
 			description:   "options to none policy",
 			cpuPolicyName: "none",
-			cpuPolicyOptions: map[string]string{
-				FullPCPUsOnlyOption: "true",
-			},
 			expectedError: fmt.Errorf("received unsupported options"),
 		},
 	}
@@ -1352,7 +1346,7 @@ func TestCPUManagerHandlePolicyOptions(t *testing.T) {
 			}
 			defer os.RemoveAll(sDir)
 
-			_, err = NewManager(testCase.cpuPolicyName, testCase.cpuPolicyOptions, 5*time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
+			_, err = NewManager(5*time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 			if err == nil {
 				t.Errorf("Expected error, but NewManager succeeded")
 			}
@@ -1365,9 +1359,6 @@ func TestCPUManagerHandlePolicyOptions(t *testing.T) {
 }
 
 func TestCpuSetContainers(t *testing.T) {
-	cpuPolicyOptions := map[string]string{
-		FullPCPUsOnlyOption: "true",
-	}
 
 	machineInfo := &cadvisorapi.MachineInfo{
 		NumCores: 8,
@@ -1608,7 +1599,7 @@ func TestCpuSetContainers(t *testing.T) {
 			testCase.containerIDs...)
 
 		nodeAllocatableReservation := v1.ResourceList{v1.ResourceCPU: *resource.NewQuantity(3, resource.DecimalSI)}
-		mgr, err := NewManager("static", cpuPolicyOptions, 5*time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
+		mgr, err := NewManager(5 * time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 
 		for i := range containers {
 			//	mgr, err :=  NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), cpuPolicyOptions)

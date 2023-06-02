@@ -147,45 +147,38 @@ func (s *sourcesReadyStub) AddSource(source string) {}
 func (s *sourcesReadyStub) AllReady() bool          { return true }
 
 // NewManager creates new cpu manager based on provided policy
-func NewManager(cpuPolicyName string, cpuPolicyOptions map[string]string, reconcilePeriod time.Duration, machineInfo *cadvisorapi.MachineInfo, specificCPUs cpuset.CPUSet, nodeAllocatableReservation v1.ResourceList, stateFileDirectory string, affinity topologymanager.Store) (Manager, error) {
+func NewManager(reconcilePeriod time.Duration, machineInfo *cadvisorapi.MachineInfo, specificCPUs cpuset.CPUSet, nodeAllocatableReservation v1.ResourceList, stateFileDirectory string, affinity topologymanager.Store) (Manager, error) {
 	var topo *topology.CPUTopology
 	var policy Policy
 	var err error
 
-	switch policyName(cpuPolicyName) {
+	topo, err = topology.Discover(machineInfo)
+	if err != nil {
+		return nil, err
+	}
+	klog.InfoS("Detected CPU topology", "topology", topo)
 
-	case PolicyStatic:
-		topo, err = topology.Discover(machineInfo)
-		if err != nil {
-			return nil, err
-		}
-		klog.InfoS("Detected CPU topology", "topology", topo)
+	reservedCPUs, ok := nodeAllocatableReservation[v1.ResourceCPU]
+	if !ok {
+		// The static policy cannot initialize without this information.
+		return nil, fmt.Errorf("[cpumanager] unable to determine reserved CPU resources for static policy")
+	}
+	if reservedCPUs.IsZero() {
+		// The static policy requires this to be nonzero. Zero CPU reservation
+		// would allow the shared pool to be completely exhausted. At that point
+		// either we would violate our guarantee of exclusivity or need to evict
+		// any pod that has at least one container that requires zero CPUs.
+		// See the comments in policy_static.go for more details.
+		return nil, fmt.Errorf("[cpumanager] the static policy requires systemreserved.cpu + kubereserved.cpu to be greater than zero")
+	}
 
-		reservedCPUs, ok := nodeAllocatableReservation[v1.ResourceCPU]
-		if !ok {
-			// The static policy cannot initialize without this information.
-			return nil, fmt.Errorf("[cpumanager] unable to determine reserved CPU resources for static policy")
-		}
-		if reservedCPUs.IsZero() {
-			// The static policy requires this to be nonzero. Zero CPU reservation
-			// would allow the shared pool to be completely exhausted. At that point
-			// either we would violate our guarantee of exclusivity or need to evict
-			// any pod that has at least one container that requires zero CPUs.
-			// See the comments in policy_static.go for more details.
-			return nil, fmt.Errorf("[cpumanager] the static policy requires systemreserved.cpu + kubereserved.cpu to be greater than zero")
-		}
-
-		// Take the ceiling of the reservation, since fractional CPUs cannot be
-		// exclusively allocated.
-		reservedCPUsFloat := float64(reservedCPUs.MilliValue()) / 1000
-		numReservedCPUs := int(math.Ceil(reservedCPUsFloat))
-		policy, err = NewStaticPolicy(topo, numReservedCPUs, specificCPUs, affinity, cpuPolicyOptions)
-		if err != nil {
-			return nil, fmt.Errorf("new static policy error: %w", err)
-		}
-
-	default:
-		return nil, fmt.Errorf("unknown policy: \"%s\"", cpuPolicyName)
+	// Take the ceiling of the reservation, since fractional CPUs cannot be
+	// exclusively allocated.
+	reservedCPUsFloat := float64(reservedCPUs.MilliValue()) / 1000
+	numReservedCPUs := int(math.Ceil(reservedCPUsFloat))
+	policy, err = NewStaticPolicy(topo, numReservedCPUs, specificCPUs, affinity)
+	if err != nil {
+		return nil, fmt.Errorf("new static policy error: %w", err)
 	}
 
 	manager := &manager{
@@ -252,7 +245,7 @@ func (m *manager) Allocate(p *v1.Pod, c *v1.Container) error {
 	}
 
 	// Garbage collect any stranded resources before allocating CPUs.
-//	m.removeStaleState()
+	// m.removeStaleState()
 
 	m.Lock()
 	defer m.Unlock()
@@ -323,7 +316,7 @@ func (m *manager) GetTopologyHints(pod *v1.Pod, container *v1.Container) map[str
 	// being cleaned before the admission ended
 	m.setPodPendingAdmission(pod)
 	// Garbage collect any stranded resources before providing TopologyHints
-	m.removeStaleState()
+	// m.removeStaleState()
 	// Delegate to active policy
 	return m.policy.GetTopologyHints(m.state, pod, container)
 }
@@ -333,7 +326,7 @@ func (m *manager) GetPodTopologyHints(pod *v1.Pod) map[string][]topologymanager.
 	// being cleaned before the admission ended
 	m.setPodPendingAdmission(pod)
 	// Garbage collect any stranded resources before providing TopologyHints
-	m.removeStaleState()
+	// m.removeStaleState()
 	// Delegate to active policy
 	return m.policy.GetPodTopologyHints(m.state, pod)
 }

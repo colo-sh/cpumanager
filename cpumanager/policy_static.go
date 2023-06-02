@@ -110,19 +110,11 @@ var _ Policy = &staticPolicy{}
 // NewStaticPolicy returns a CPU manager policy that does not change CPU
 // assignments for exclusively pinned guaranteed containers after the main
 // container process starts.
-func NewStaticPolicy(topology *topology.CPUTopology, numReservedCPUs int, reservedCPUs cpuset.CPUSet, affinity topologymanager.Store, cpuPolicyOptions map[string]string) (Policy, error) {
-	opts, err := NewStaticPolicyOptions(cpuPolicyOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	klog.InfoS("Static policy created with configuration", "options", opts)
-
+func NewStaticPolicy(topology *topology.CPUTopology, numReservedCPUs int, reservedCPUs cpuset.CPUSet, affinity topologymanager.Store) (Policy, error) {
 	policy := &staticPolicy{
 		topology:    topology,
 		affinity:    affinity,
 		cpusToReuse: make(map[string]cpuset.CPUSet),
-		options:     opts,
 	}
 
 	allCPUs := topology.CPUDetails.CPUs()
@@ -252,10 +244,9 @@ func (p *staticPolicy) Allocate(s state.State, pod *v1.Pod, container *v1.Contai
 	if numCPUs := p.guaranteedCPUs(pod, container); numCPUs != 0 {
 		klog.InfoS("Static policy: Allocate", "pod", klog.KObj(pod), "containerName", container.Name)
 		// container belongs in an exclusively allocated pool
-		cpuOnly := p.options.FullPhysicalCPUsOnly
 		cpuPer := ((numCPUs % p.topology.CPUsPerCore()) != 0)
 
-		if cpuOnly && cpuPer {
+		if cpuPer {
 			// Since CPU Manager has been enabled requesting strict SMT alignment, it means a guaranteed pod can only be admitted
 			// if the CPU requested is a multiple of the number of virtual cpus per physical cores.
 			// In case CPU request is not a multiple of the number of virtual cpus per physical cores the Pod will be put

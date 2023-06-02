@@ -21,12 +21,12 @@ import (
 	"reflect"
 	"testing"
 
-	v1 "k8s.io/api/core/v1"
 	"github.com/colo-sh/cpumanager/cpumanager/state"
 	"github.com/colo-sh/cpumanager/cpumanager/topology"
 	"github.com/colo-sh/cpumanager/cpuset"
 	"github.com/colo-sh/cpumanager/topologymanager"
 	"github.com/colo-sh/cpumanager/topologymanager/bitmask"
+	v1 "k8s.io/api/core/v1"
 )
 
 type staticPolicyTest struct {
@@ -64,7 +64,7 @@ func (spt staticPolicyTest) PseudoClone() staticPolicyTest {
 }
 
 func TestStaticPolicyName(t *testing.T) {
-	policy, _ := NewStaticPolicy(topoSingleSocketHT, 1, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), nil)
+	policy, _ := NewStaticPolicy(topoSingleSocketHT, 1, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 
 	policyName := policy.Name()
 	if policyName != "static" {
@@ -140,7 +140,7 @@ func TestStaticPolicyStart(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			p, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), nil)
+			p, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 			policy := p.(*staticPolicy)
 			st := &mockState{
 				assignments:   testCase.stAssignments,
@@ -517,7 +517,7 @@ func TestStaticPolicyAdd(t *testing.T) {
 }
 
 func runStaticPolicyTestCase(t *testing.T, testCase staticPolicyTest) {
-	policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), testCase.options)
+	policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 
 	st := &mockState{
 		assignments:   testCase.stAssignments,
@@ -617,7 +617,7 @@ func TestStaticPolicyRemove(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), nil)
+		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 
 		st := &mockState{
 			assignments:   testCase.stAssignments,
@@ -707,7 +707,7 @@ func TestTopologyAwareAllocateCPUs(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		p, _ := NewStaticPolicy(tc.topo, 0, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), nil)
+		p, _ := NewStaticPolicy(tc.topo, 0, cpuset.NewCPUSet(), topologymanager.NewFakeManager())
 		policy := p.(*staticPolicy)
 		st := &mockState{
 			assignments:   tc.stAssignments,
@@ -781,7 +781,7 @@ func TestStaticPolicyStartWithResvList(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(t *testing.T) {
-			p, err := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, testCase.reserved, topologymanager.NewFakeManager(), nil)
+			p, err := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, testCase.reserved, topologymanager.NewFakeManager())
 			if !reflect.DeepEqual(err, testCase.expNewErr) {
 				t.Errorf("StaticPolicy Start() error (%v). expected error: %v but got: %v",
 					testCase.description, testCase.expNewErr, err)
@@ -858,7 +858,7 @@ func TestStaticPolicyAddWithResvList(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, testCase.reserved, topologymanager.NewFakeManager(), nil)
+		policy, _ := NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, testCase.reserved, topologymanager.NewFakeManager())
 
 		st := &mockState{
 			assignments:   testCase.stAssignments,
@@ -897,90 +897,5 @@ func TestStaticPolicyAddWithResvList(t *testing.T) {
 					testCase.description, container.Name, st.assignments)
 			}
 		}
-	}
-}
-
-type staticPolicyOptionTestCase struct {
-	description   string
-	policyOptions map[string]string
-	expectedError bool
-	expectedValue StaticPolicyOptions
-}
-
-func TestStaticPolicyOptions(t *testing.T) {
-	testCases := []staticPolicyOptionTestCase{
-		{
-			description:   "nil args",
-			policyOptions: nil,
-			expectedError: false,
-			expectedValue: StaticPolicyOptions{},
-		},
-		{
-			description:   "empty args",
-			policyOptions: map[string]string{},
-			expectedError: false,
-			expectedValue: StaticPolicyOptions{},
-		},
-		{
-			description: "bad single arg",
-			policyOptions: map[string]string{
-				"badValue1": "",
-			},
-			expectedError: true,
-		},
-		{
-			description: "bad multiple arg",
-			policyOptions: map[string]string{
-				"badValue1": "",
-				"badvalue2": "aaaa",
-			},
-			expectedError: true,
-		},
-		{
-			description: "good arg",
-			policyOptions: map[string]string{
-				FullPCPUsOnlyOption: "true",
-			},
-			expectedError: false,
-			expectedValue: StaticPolicyOptions{
-				FullPhysicalCPUsOnly: true,
-			},
-		},
-		{
-			description: "good arg, bad value",
-			policyOptions: map[string]string{
-				FullPCPUsOnlyOption: "enabled!",
-			},
-			expectedError: true,
-		},
-
-		{
-			description: "bad arg intermixed",
-			policyOptions: map[string]string{
-				FullPCPUsOnlyOption: "1",
-				"badvalue2":         "lorem ipsum",
-			},
-			expectedError: true,
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.description, func(t *testing.T) {
-			opts, err := NewStaticPolicyOptions(testCase.policyOptions)
-			gotError := (err != nil)
-			if gotError != testCase.expectedError {
-				t.Fatalf("error with args %v expected error %v got %v: %v",
-					testCase.policyOptions, testCase.expectedError, gotError, err)
-			}
-
-			if testCase.expectedError {
-				return
-			}
-
-			if !reflect.DeepEqual(opts, testCase.expectedValue) {
-				t.Fatalf("value mismatch with args %v expected value %v got %v",
-					testCase.policyOptions, testCase.expectedValue, opts)
-			}
-		})
 	}
 }
