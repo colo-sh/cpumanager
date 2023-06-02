@@ -17,14 +17,10 @@ limitations under the License.
 package topologymanager
 
 import (
-	"fmt"
-
-	cadvisorapi "github.com/google/cadvisor/info/v1"
-	"k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
 	"github.com/colo-sh/cpumanager/topologymanager/bitmask"
-	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
+	"k8s.io/api/core/v1"
 )
+
 
 const (
 	// maxAllowableNUMANodes specifies the maximum number of NUMA Nodes that
@@ -51,25 +47,7 @@ func (e TopologyAffinityError) Type() string {
 	return ErrorTopologyAffinity
 }
 
-// Manager interface provides methods for Kubelet to manage pod topology hints
-type Manager interface {
-	// PodAdmitHandler is implemented by Manager
-	lifecycle.PodAdmitHandler
-	// AddHintProvider adds a hint provider to manager to indicate the hint provider
-	// wants to be consulted with when making topology hints
-	AddHintProvider(HintProvider)
-	// AddContainer adds pod to Manager for tracking
-	AddContainer(pod *v1.Pod, container *v1.Container, containerID string)
-	// RemoveContainer removes pod from Manager tracking
-	RemoveContainer(containerID string) error
-	// Store is the interface for storing pod topology hints
-	Store
-}
 
-type manager struct {
-	//Topology Manager Scope
-	scope Scope
-}
 
 // HintProvider is an interface for components that want to collaborate to
 // achieve globally optimal concrete resource alignment with respect to
@@ -91,6 +69,19 @@ type HintProvider interface {
 	// call to Store.GetAffinity().
 	Allocate(pod *v1.Pod, container *v1.Container) error
 }
+
+type Manager interface {
+	// AddHintProvider adds a hint provider to manager to indicate the hint provider
+	// wants to be consulted with when making topology hints
+	AddHintProvider(HintProvider)
+	// AddContainer adds pod to Manager for tracking
+	AddContainer(pod *v1.Pod, container *v1.Container, containerID string)
+	// RemoveContainer removes pod from Manager tracking
+	RemoveContainer(containerID string) error
+	// Store is the interface for storing pod topology hints
+	Store
+}
+
 
 //Store interface is to allow Hint Providers to retrieve pod affinity
 type Store interface {
@@ -124,81 +115,4 @@ func (th *TopologyHint) LessThan(other TopologyHint) bool {
 		return th.Preferred
 	}
 	return th.NUMANodeAffinity.IsNarrowerThan(other.NUMANodeAffinity)
-}
-
-var _ Manager = &manager{}
-
-// NewManager creates a new TopologyManager based on provided policy and scope
-func NewManager(topology []cadvisorapi.Node, topologyPolicyName string, topologyScopeName string) (Manager, error) {
-	klog.InfoS("Creating topology manager with policy per scope", "topologyPolicyName", topologyPolicyName, "topologyScopeName", topologyScopeName)
-
-	var numaNodes []int
-	for _, node := range topology {
-		numaNodes = append(numaNodes, node.Id)
-	}
-
-	if topologyPolicyName != PolicyNone && len(numaNodes) > maxAllowableNUMANodes {
-		return nil, fmt.Errorf("unsupported on machines with more than %v NUMA Nodes", maxAllowableNUMANodes)
-	}
-
-	var policy Policy
-	switch topologyPolicyName {
-
-	case PolicyNone:
-		policy = NewNonePolicy()
-
-	case PolicyBestEffort:
-		policy = NewBestEffortPolicy(numaNodes)
-
-	case PolicyRestricted:
-		policy = NewRestrictedPolicy(numaNodes)
-
-	case PolicySingleNumaNode:
-		policy = NewSingleNumaNodePolicy(numaNodes)
-
-	default:
-		return nil, fmt.Errorf("unknown policy: \"%s\"", topologyPolicyName)
-	}
-
-	var scope Scope
-	switch topologyScopeName {
-
-	case containerTopologyScope:
-		scope = NewContainerScope(policy)
-
-	case podTopologyScope:
-		scope = NewPodScope(policy)
-
-	default:
-		return nil, fmt.Errorf("unknown scope: \"%s\"", topologyScopeName)
-	}
-
-	manager := &manager{
-		scope: scope,
-	}
-
-	return manager, nil
-}
-
-func (m *manager) GetAffinity(podUID string, containerName string) TopologyHint {
-	return m.scope.GetAffinity(podUID, containerName)
-}
-
-func (m *manager) AddHintProvider(h HintProvider) {
-	m.scope.AddHintProvider(h)
-}
-
-func (m *manager) AddContainer(pod *v1.Pod, container *v1.Container, containerID string) {
-	m.scope.AddContainer(pod, container, containerID)
-}
-
-func (m *manager) RemoveContainer(containerID string) error {
-	return m.scope.RemoveContainer(containerID)
-}
-
-func (m *manager) Admit(attrs *lifecycle.PodAdmitAttributes) lifecycle.PodAdmitResult {
-	klog.InfoS("Topology Admit Handler")
-	pod := attrs.Pod
-
-	return m.scope.Admit(pod)
 }

@@ -104,6 +104,21 @@ type staticPolicy struct {
 	options StaticPolicyOptions
 }
 
+type StaticPolicyOptions struct {
+	// flag to enable extra allocation restrictions to avoid
+	// different containers to possibly end up on the same core.
+	// we consider "core" and "physical CPU" synonim here, leaning
+	// towards the terminoloy k8s hints. We acknowledge this is confusing.
+	//
+	// looking at https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/,
+	// any possible naming scheme will lead to ambiguity to some extent.
+	// We picked "pcpu" because it the established docs hints at vCPU already.
+	FullPhysicalCPUsOnly bool
+	// Flag to evenly distribute CPUs across NUMA nodes in cases where more
+	// than one NUMA node is required to satisfy the allocation.
+	DistributeCPUsAcrossNUMA bool
+}
+
 // Ensure staticPolicy implements Policy interface
 var _ Policy = &staticPolicy{}
 
@@ -115,6 +130,9 @@ func NewStaticPolicy(topology *topology.CPUTopology, numReservedCPUs int, reserv
 		topology:    topology,
 		affinity:    affinity,
 		cpusToReuse: make(map[string]cpuset.CPUSet),
+		options: StaticPolicyOptions{
+			DistributeCPUsAcrossNUMA: true,
+		},
 	}
 
 	allCPUs := topology.CPUDetails.CPUs()
@@ -381,9 +399,7 @@ func (p *staticPolicy) podGuaranteedCPUs(pod *v1.Pod) int {
 func (p *staticPolicy) takeByTopology(availableCPUs cpuset.CPUSet, numCPUs int) (cpuset.CPUSet, error) {
 	if p.options.DistributeCPUsAcrossNUMA {
 		cpuGroupSize := 1
-		if p.options.FullPhysicalCPUsOnly {
-			cpuGroupSize = p.topology.CPUsPerCore()
-		}
+		cpuGroupSize = p.topology.CPUsPerCore()
 		return takeByTopologyNUMADistributed(p.topology, availableCPUs, numCPUs, cpuGroupSize)
 	}
 	return takeByTopologyNUMAPacked(p.topology, availableCPUs, numCPUs)

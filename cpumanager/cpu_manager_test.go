@@ -1599,10 +1599,17 @@ func TestCpuSetContainers(t *testing.T) {
 			testCase.containerIDs...)
 
 		nodeAllocatableReservation := v1.ResourceList{v1.ResourceCPU: *resource.NewQuantity(3, resource.DecimalSI)}
-		mgr, err := NewManager(5 * time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 
 		for i := range containers {
 			//	mgr, err :=  NewStaticPolicy(testCase.topo, testCase.numReservedCPUs, cpuset.NewCPUSet(), topologymanager.NewFakeManager(), cpuPolicyOptions)
+			//mngr, err := topologymanager.NewManager(nil, "single-numa-node", "container")
+			//if err != nil {
+			//	fmt.Errorf("topologymanager NewManager() error (%v)", err)
+			//	continue
+			//}
+			//mgr, err := NewManager(5 * time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, mngr)
+
+			mgr, err := NewManager(5 * time.Second, machineInfo, cpuset.NewCPUSet(), nodeAllocatableReservation, sDir, topologymanager.NewFakeManager())
 
 			err = mgr.Allocate(testCase.pod, &containers[i])
 			if err != nil {

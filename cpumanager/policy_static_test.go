@@ -466,9 +466,6 @@ func TestStaticPolicyAdd(t *testing.T) {
 		{
 			description: "GuPodSingleCore, SingleSocketHT, ExpectAllocOneCPU",
 			topo:        topoSingleSocketHT,
-			options: map[string]string{
-				FullPCPUsOnlyOption: "true",
-			},
 			numReservedCPUs: 1,
 			stAssignments:   state.ContainerCPUAssignments{},
 			stDefaultCPUSet: cpuset.NewCPUSet(0, 1, 2, 3, 4, 5, 6, 7),
@@ -481,9 +478,6 @@ func TestStaticPolicyAdd(t *testing.T) {
 			// test SMT-level != 2 - which is the default on x86_64
 			description: "GuPodMultipleCores, topoQuadSocketFourWayHT, ExpectAllocOneCPUs",
 			topo:        topoQuadSocketFourWayHT,
-			options: map[string]string{
-				FullPCPUsOnlyOption: "true",
-			},
 			numReservedCPUs: 8,
 			stAssignments:   state.ContainerCPUAssignments{},
 			stDefaultCPUSet: largeTopoCPUSet,
@@ -495,17 +489,8 @@ func TestStaticPolicyAdd(t *testing.T) {
 	}
 
 	for _, testCase := range optionsInsensitiveTestCases {
-		for _, options := range []map[string]string{
-			nil,
-			{
-				FullPCPUsOnlyOption: "true",
-			},
-		} {
-			tCase := testCase.PseudoClone()
-			tCase.description = fmt.Sprintf("options=%v %s", options, testCase.description)
-			tCase.options = options
-			runStaticPolicyTestCase(t, tCase)
-		}
+		tCase := testCase.PseudoClone()
+		runStaticPolicyTestCase(t, tCase)
 	}
 
 	for _, testCase := range defaultOptionsTestCases {
